@@ -1,38 +1,38 @@
-name: Build & Push Netflix Image to ECR
+name: Build & Push to Amazon ECR Public
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
-
+ 
 env:
-  AWS_REGION: ap-south-1
-  ECR_REPOSITORY: "public.ecr.aws/e8k8i3u3/ltimindtree"
+  AWS_REGION: us-east-1
+  PUBLIC_ECR_REPO: "public.ecr.aws/e8k8i3u3/ltimindtree"
   IMAGE_TAG: "${{ github.run_number }}"
-
+ 
 jobs:
   build:
-    runs-on: self-hosted
-
+    runs-on: [ self-hosted, dev]
+ 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Login to Amazon ECR
+ 
+      - name: Login to Amazon ECR Public
         run: |
-          set -e
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/e8k8i3u3
-
+          aws ecr-public get-login-password --region "${AWS_REGION}" \
+          | docker login --username AWS --password-stdin public.ecr.aws/e8k8i3u3
+ 
       - name: Build Docker Image
         run: |
-          docker build --no-cache -t "${ECR_REPOSITORY}:${IMAGE_TAG}" .
-
-      - name: Push Image to ECR
+          docker build -t  "${PUBLIC_ECR_REPO}:${IMAGE_TAG}" .
+ 
+      - name: Push Image to ECR Public
         run: |
-          docker push "${ECR_REPOSITORY}:${IMAGE_TAG}"
-
-      - name: Pull and run
+          docker push "${PUBLIC_ECR_REPO}:${IMAGE_TAG}"
+ 
+      - name: Stop old container and run new one
         run: |
-          docker ps -aq -f name=demo | xargs -r docker stop
-          docker run --rm -dit --name demo --publish 8000:80 "${ECR_REPOSITORY}:${IMAGE_TAG}"
-
+          docker ps -aq -f name=sairam | xargs -r docker stop
+          docker ps -aq -f name=sairam | xargs -r docker rm
+          docker run --rm -dit --name sairam --publish 8000:80 "${PUBLIC_ECR_REPO}:${IMAGE_TAG}"
